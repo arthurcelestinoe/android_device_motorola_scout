@@ -189,7 +189,12 @@ $(call soong_config_set,surfaceflinger,udfps_lib,//device/motorola/scout/udfps:l
 # Verified Boot
 BOARD_AVB_ENABLE := true
 BOARD_AVB_ALGORITHM := SHA256_RSA2048
+# Builders without vendor/lineage-priv fall back to the AOSP test key.
+ifneq ($(wildcard vendor/lineage-priv/keys/vbmeta.pem),)
 BOARD_AVB_KEY_PATH := vendor/lineage-priv/keys/vbmeta.pem
+else
+BOARD_AVB_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
+endif
 # Match the rollback floor declared by the A171VCH.41-15 stock firmware.
 BOARD_AVB_ROLLBACK_INDEX := 21
 # Preserve the vendor descriptors paired with the unmodified A171VCH.41-15 kernel.
@@ -200,7 +205,11 @@ BOARD_AVB_DTBO_ADD_HASH_FOOTER_ARGS += --hash_algorithm sha256
 
 BOARD_AVB_VBMETA_SYSTEM := system system_ext
 BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := $(BOARD_AVB_ALGORITHM)
+ifneq ($(wildcard vendor/lineage-priv/keys/vbmeta_system.pem),)
 BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := vendor/lineage-priv/keys/vbmeta_system.pem
+else
+BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
+endif
 BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := $(BOARD_AVB_ROLLBACK_INDEX)
 BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX_LOCATION := 2
 

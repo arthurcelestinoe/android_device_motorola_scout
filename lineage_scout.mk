@@ -13,8 +13,11 @@ $(call inherit-product, device/motorola/scout/device.mk)
 # AxionOS phone configuration.
 TARGET_DISABLE_EPPE := true
 $(call inherit-product, vendor/lineage/config/common_full_phone.mk)
-$(call inherit-product, vendor/lineage-priv/keys/scout-apex.mk)
+# Release signing (optional; absent for builders without vendor/lineage-priv).
+$(call inherit-product-if-exists, vendor/lineage-priv/keys/scout-apex.mk)
+ifneq ($(wildcard vendor/lineage-priv/keys/releasekey.x509.pem),)
 PRODUCT_OTA_PUBLIC_KEYS := vendor/lineage-priv/keys/releasekey
+endif
 PRODUCT_SYSTEM_PROPERTIES += apexd.config.dm_create.timeout=5000
 
 ifeq ($(TARGET_BUILD_VARIANT),userdebug)
