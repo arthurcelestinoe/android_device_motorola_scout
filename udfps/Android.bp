@@ -20,10 +20,10 @@ cc_library {
     srcs: ["UdfpsHandlerImpl.cpp"],
     local_include_dirs: ["include"],
     shared_libs: [
+        "com.motorola.hardware.biometric.fingerprint-V2-ndk",
         "libbase",
+        "libbinder_ndk",
         "liblog",
-        "libutils",
-        "libhidlbase",
     ],
     header_libs: ["libhardware_headers"],
 }

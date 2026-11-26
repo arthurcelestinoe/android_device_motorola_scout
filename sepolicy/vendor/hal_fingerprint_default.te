@@ -25,3 +25,8 @@ allow hal_fingerprint_default sysfs_fingerprint:file rw_file_perms;
 add_service(hal_fingerprint_default, hal_fingerprint_test_service)
 allow hal_fingerprint_default sysfs_leds:file rw_file_perms;
 allow hal_fingerprint_default sysfs_hbm:file rw_file_perms;
+
+# libgf_hal raises the FOD high-brightness mode itself through IDisplayPanel
+# before capturing (stock lists hal_fingerprint_default as a panel client).
+allow hal_fingerprint_default hal_moto_panel_aidl_service:service_manager find;
+binder_call(hal_fingerprint_default, hal_display_panel)

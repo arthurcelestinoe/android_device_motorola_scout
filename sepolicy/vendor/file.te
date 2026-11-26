@@ -23,3 +23,6 @@ type sysfs_hbm, sysfs_type, fs_type;
 type vendor_boot_log_file, file_type;
 
 typeattribute hal_graphics_allocator_default_tmpfs mlstrustedobject, hal_graphics_allocator_client_tmpfs;
+
+# DRM connector nodes the Motorola panel module reads (panelName, panelDC).
+type vendor_sysfs_graphics, fs_type, sysfs_type;

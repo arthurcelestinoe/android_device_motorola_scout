@@ -1,0 +1,13 @@
+//
+// SPDX-FileCopyrightText: The LineageOS Project
+// SPDX-License-Identifier: Apache-2.0
+//
+
+// Loaded by the stock mtkpower_applist service in place of lib_power_applist.so
+// (see extract-files.py); the name must stay exactly as long as the original.
+cc_library_shared {
+    name: "lib_power_aplshim",
+    vendor: true,
+    srcs: ["ApplistShim.cpp"],
+    shared_libs: ["liblog"],
+}

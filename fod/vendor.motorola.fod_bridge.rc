@@ -1,0 +1,4 @@
+service vendor.fod_bridge /vendor/bin/hw/vendor.motorola.fod_bridge
+    class hal
+    user system
+    group system input

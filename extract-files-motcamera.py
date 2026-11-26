@@ -23,6 +23,11 @@ namespace_imports = [
 ]
 
 blob_fixups: blob_fixups_user_type = {
+    # The stock Android 17 blob versions this API. Android 16 exports the same
+    # camera metadata function without a version.
+    'system_ext/lib64/libenginepostproc.moto.so': blob_fixup()
+        .clear_symbol_version('get_camera_metadata_size'),
+
     # libgpud_sys links android.hardware.graphics.common v6 directly, but the
     # platform's libui and libgralloctypes, which it also links, are built
     # against v7. Soong rejects a module that depends on two versions of the

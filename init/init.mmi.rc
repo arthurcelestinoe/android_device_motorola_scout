@@ -61,6 +61,7 @@ on post-fs
     verity_update_state
 
 on post-fs-data
+     mkdir /data/vendor/audiohal 0771 system audio
      setprop ro.vendor.build.fingerprint ${ro.product.vendor.brand}/${ro.product.vendor.name}/${ro.product.vendor.device}:${ro.vendor.build.version.release}/${ro.vendor.build.id}/${ro.vendor.build.version.incremental}:${ro.vendor.build.type}/${ro.vendor.build.tags}
 
      setprop ro.product.brand_for_attestation ${ro.product.vendor.brand}
@@ -167,6 +168,15 @@ on property:sys.boot_completed=*
 
 on property:sys.boot_completed=1
     start vendor.batt_health
+
+# Screen-off touch gestures. With none enabled the driver powers the touch IC off
+# on suspend (mmi,power-off-suspend); enabled ones keep it in gesture mode and
+# report through the com.motorola.sensor.double_tap sensor, which SystemUI uses
+# for screen-off fingerprint unlock and double tap to wake. The node takes
+# 16 + 16 * type + on: 17 = zero tap (finger on the sensor), 49 = double tap.
+on property:sys.boot_completed=1
+    write /sys/class/touchscreen/primary/gesture 17
+    write /sys/class/touchscreen/primary/gesture 49
 
 on charger
     start vendor.batt_health

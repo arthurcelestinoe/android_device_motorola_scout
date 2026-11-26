@@ -4,4 +4,8 @@
 //
 
 soong_namespace {
+    imports: [
+        // com.motorola.hardware.biometric.fingerprint-V2-ndk for libudfpshandler.
+        "hardware/motorola",
+    ],
 }

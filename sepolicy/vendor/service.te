@@ -12,7 +12,6 @@ type hal_zui_alarm_service, protected_service, service_manager_type, hal_service
 type hal_mot_sensorscalibrate_service, protected_service, service_manager_type, hal_service_type;
 type hal_mot_touch_service, protected_service, service_manager_type, hal_service_type;
 type hal_dms_service, protected_service, service_manager_type, hal_service_type;
-type hal_vtservice_aidl_service, protected_service, service_manager_type, hal_service_type;
 type hal_mot_imgtuner_service, protected_service, service_manager_type, hal_service_type;
 type mtk_hal_rcs_service, protected_service, service_manager_type, hal_service_type;
 type mtk_hal_gnss_service, service_manager_type, hal_service_type;

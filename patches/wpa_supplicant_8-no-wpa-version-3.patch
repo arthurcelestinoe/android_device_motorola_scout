@@ -1,0 +1,30 @@
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index f8cc9e1..a1e1b89 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -7010,7 +7010,8 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
+ 		if (params->wpa_proto & WPA_PROTO_WPA)
+ 			ver |= NL80211_WPA_VERSION_1;
+ 		if (params->wpa_proto & WPA_PROTO_RSN) {
+-#if !defined(CONFIG_DRIVER_NL80211_BRCM) && !defined(CONFIG_DRIVER_NL80211_SYNA)
++#if !defined(CONFIG_DRIVER_NL80211_BRCM) && !defined(CONFIG_DRIVER_NL80211_SYNA) && \
++    !defined(CONFIG_DRIVER_NL80211_NO_WPA_VERSION_3)
+ 			/*
+ 			 * NL80211_ATTR_SAE_PASSWORD is related and was added
+ 			 * at the same time as NL80211_WPA_VERSION_3.
+diff --git a/wpa_supplicant/Android.bp b/wpa_supplicant/Android.bp
+index 2720046..1a4e86f 100644
+--- a/wpa_supplicant/Android.bp
++++ b/wpa_supplicant/Android.bp
+@@ -895,6 +895,11 @@ wpa_supplicant_cc_defaults_type {
+     }) + select(soong_config_variable("wpa_supplicant_8", "wifi_disable_multi_akm"), {
+         true: ["-DCONFIG_DISABLE_MULTI_AKM"],
+         default: [],
++    }) + select(soong_config_variable("wpa_supplicant_8", "wifi_no_wpa_version_3"), {
++        // Drivers such as MediaTek gen4m only know NL80211_WPA_VERSION_1/2 and
++        // drop the AKM list of an SAE connect sent as WPA_VERSION_3.
++        true: ["-DCONFIG_DRIVER_NL80211_NO_WPA_VERSION_3"],
++        default: [],
+     }) + select(soong_config_variable("wpa_supplicant_8", "wpa_supplicant_11ax"), {
+         true: ["-DCONFIG_IEEE80211AX"],
+         default: [],

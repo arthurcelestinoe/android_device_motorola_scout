@@ -8,6 +8,8 @@ com.fingerprints.fpc.extension.IFpcExtension/default                            
 # NWK OPT Service
 vendor.mediatek.hardware.nwk_opt_new.INwkOptNew/default                         u:object_r:mtk_hal_nwk_opt_service:s0
 
+motorola.hardware.sarwifi.IMtkWifi/default                                      u:object_r:hal_motsarwifi_service:s0
+
 # Motorola SensorExt
 motorola.hardware.sensors.ISensorExt/default                                    u:object_r:mot_sensorext_service:s0
 

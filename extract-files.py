@@ -48,7 +48,8 @@ blob_fixups: blob_fixups_user_type = {
     'vendor/lib64/hw/audio.primary.mediatek.so': blob_fixup()
         .add_needed('libstagefright_foundation-v33.so')
         .replace_needed('libutils.so','libutils-v32.so')
-        .replace_needed('libalsautils.so','libalsautils-v31.so'),
+        .replace_needed('libalsautils.so','libalsautils-v31.so')
+        .replace_needed('libtinyxml2.so', 'libtinyxml2-v34.so'),
 
     'vendor/lib64/hw/hwcomposer.mtk_common.so': blob_fixup()
         .add_needed('libprocessgroup_shim.so'),
@@ -131,7 +132,29 @@ blob_fixups: blob_fixups_user_type = {
         .clear_symbol_version('AHardwareBuffer_unlock'),
 
     'vendor/lib64/hw/mt6878/vendor.mediatek.hardware.pq_aidl-impl.so': blob_fixup()
-        .add_needed('libui_shim.so'),
+        .add_needed('libui_shim.so')
+        .replace_needed('libtinyxml2.so', 'libtinyxml2-v34.so'),
+
+    # These blobs were built against the VNDK v34 tinyxml2. The tinyxml2 11 that
+    # this tree builds for vendor has a larger XMLDocument, so a stack-allocated
+    # document in the blob gets overrun by the new constructor (libpowerhal init()
+    # crashed with a zeroed callee-saved register, so IPower never registered).
+    (
+        'vendor/lib64/libpowerhal.so',
+        'vendor/lib64/lib_power_applist.so',
+        'vendor/lib64/mt6878/libmmlpqImpl.so',
+        'vendor/lib64/libpqxmlparser.so',
+        'vendor/lib64/libpqxmlflagparser.so',
+        'vendor/lib64/libsilkybrightnesscore.so',
+        'vendor/lib64/librt_extamp_intf.so',
+    ): blob_fixup()
+        .replace_needed('libtinyxml2.so', 'libtinyxml2-v34.so'),
+
+    # The APPListFPS thread busy-loops on _checkFPSupdate because FPSGO never
+    # blocks without MediaTek's SurfaceFlinger hooks; load the throttling shim
+    # (device/motorola/scout/applist-shim) instead. Same length as the original.
+    'vendor/bin/hw/vendor.mediatek.hardware.mtkpower_applist-service.mediatek': blob_fixup()
+        .binary_regex_replace(b'lib_power_applist.so', b'lib_power_aplshim.so'),
 
     'vendor/etc/init/thermal-mediatek.rc': blob_fixup()
         .regex_replace('android.hardware.thermal-service.mediatek', 'android.hardware.thermal-service.mediatek.scout'),
@@ -156,14 +179,11 @@ blob_fixups: blob_fixups_user_type = {
         .replace_needed('com.motorola.hardware.biometric.fingerprint-V2-ndk.so', 'com.motorola.hardware.biometric.fingerprint-V2-ndk-moto.so'),
 
     'vendor/bin/hw/motorola.hardware.sensorext-service': blob_fixup()
-        .add_needed('libui_shim.so'),
+        .add_needed('libui_shim.so')
+        .replace_needed('libtinyxml2.so', 'libtinyxml2-v34.so'),
 
     'vendor/lib64/libtpa.so': blob_fixup()
         .replace_needed('android.hardware.security.keymint-V3-ndk.so', 'android.hardware.security.keymint-V4-ndk.so'),
-
-    ('vendor/bin/hw/vendor.mediatek.hardware.mtkpower-service.mediatek',
-     'vendor/lib64/android.hardware.power-service-mediatek.so'): blob_fixup()
-        .replace_needed('android.hardware.power-service-mediatek.so', 'android.hardware.power-service-mediatek.scout.so'),
 
 }  # fmt: skip
 
@@ -173,7 +193,8 @@ module = ExtractUtilsModule(
     blob_fixups=blob_fixups,
     lib_fixups=lib_fixups,
     namespace_imports=namespace_imports,
-    add_firmware_proprietary_file=True,
+    # The stock A171VCH.41-15 firmware is an installation prerequisite.
+    # Keep physical platform firmware out of generated installation packages.
 )
 
 if __name__ == '__main__':

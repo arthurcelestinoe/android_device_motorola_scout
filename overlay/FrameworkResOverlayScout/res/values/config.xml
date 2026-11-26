@@ -183,6 +183,15 @@
     <string name="config_dozeComponent">
         com.android.systemui/com.android.systemui.doze.DozeService
     </string>
+
+    <!-- Motorola's touch gesture sensor reports every screen-off gesture: values[0]
+         is 2 for a finger on the fingerprint sensor (zero tap) and 4 for a double tap
+         (x, y in values[1..2]). SystemUI tells them apart through
+         config_dozeMotoGestureSensor. -->
+    <string name="config_dozeUdfpsLongPressSensorType" translatable="false">com.motorola.sensor.double_tap</string>
+    <string name="config_dozeDoubleTapSensorType" translatable="false">com.motorola.sensor.double_tap</string>
+    <bool name="config_screen_off_udfps_enabled">true</bool>
+    <bool name="config_screen_off_udfps_default_on">true</bool>
     <!-- The default refresh rate for a given device. Change this value to set a higher default
          refresh rate. If the hardware composer on the device supports display modes with a higher
          refresh rate than the default value specified here, the framework may use those higher

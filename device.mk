@@ -93,9 +93,11 @@ PRODUCT_COPY_FILES += \
 
 PRODUCT_COPY_FILES += \
     frameworks/av/services/audiopolicy/config/a2dp_audio_policy_configuration_7_0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/a2dp_audio_policy_configuration.xml \
+    frameworks/av/services/audiopolicy/config/audio_policy_volumes.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_policy_volumes.xml \
     frameworks/av/services/audiopolicy/config/bluetooth_audio_policy_configuration_7_0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/bluetooth_audio_policy_configuration.xml \
     frameworks/av/services/audiopolicy/config/default_volume_tables.xml:$(TARGET_COPY_OUT_VENDOR)/etc/default_volume_tables.xml \
-    frameworks/av/services/audiopolicy/config/r_submix_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/r_submix_audio_policy_configuration.xml
+    frameworks/av/services/audiopolicy/config/r_submix_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/r_submix_audio_policy_configuration.xml \
+    frameworks/av/services/audiopolicy/config/usb_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/usb_audio_policy_configuration.xml
 
 # Bootcontrol
 PRODUCT_PACKAGES += \
@@ -159,7 +161,18 @@ PRODUCT_COPY_FILES += \
 
 # Fingerprint
 PRODUCT_PACKAGES += \
-    libudfpshandler
+    libudfpshandler \
+    vendor.motorola.fod_bridge
+
+# The Goodix HAL reports halHandlesDisplayTouches but, like on stock Android 15,
+# starts the capture from onPointerDown; IMotoFingerPrint::sendFodEvent only
+# records the display state. The optical sensor also needs the panel FOD
+# high-brightness mode, which FingerprintProvider raises only while an enroll or
+# authenticate client takes the touch. Needs frameworks/base patched
+# (patches/frameworks_base-fp-force-pointer-events.patch).
+PRODUCT_SYSTEM_PROPERTIES += \
+    persist.sys.ax_fp_force_pointer_events=true \
+    persist.sys.ax_fp_moto_panel_hbm=true
 
 PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.fingerprint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.fingerprint.xml
@@ -177,6 +190,7 @@ PRODUCT_PACKAGES += \
 PRODUCT_HIDL_ENABLED := true
 PRODUCT_PACKAGES += \
     hwservicemanager \
+    vndservicemanager \
     android.hidl.allocator@1.0-service
 
 # Init
@@ -261,19 +275,16 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.nfc.uicc.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.nfc.uicc.xml \
     frameworks/native/data/etc/android.hardware.nfc.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.nfc.xml
 
-# SKU names must match the directories stock actually ships on odm
-# (sku_b, sku_bne, sku_d, sku_dne). The previous list (dns dnsf ns nsf) came
-# from a different Motorola device, so these permission files landed in
-# directories the framework never reads on scout - silently dropping NFC eSE,
-# OMAPI eSE and strongbox keystore support.
-DEVICE_NFC_SKUS := b bne d dne
+# Match stock NFC availability. Keep StrongBox unadvertised until its HAL is integrated.
+DEVICE_NFC_SKUS := bne dne
+DEVICE_NO_NFC_SKUS := b d
 
 PRODUCT_COPY_FILES += \
     $(foreach DEVICE_NFC_SKU, $(DEVICE_NFC_SKUS), \
     frameworks/native/data/etc/android.hardware.nfc.ese.xml:$(TARGET_COPY_OUT_ODM)/etc/permissions/sku_$(DEVICE_NFC_SKU)/android.hardware.nfc.ese.xml \
-    frameworks/native/data/etc/android.hardware.se.omapi.ese.xml:$(TARGET_COPY_OUT_ODM)/etc/permissions/sku_$(DEVICE_NFC_SKU)/android.hardware.se.omapi.ese.xml \
-    frameworks/native/data/etc/android.hardware.strongbox_keystore.xml:$(TARGET_COPY_OUT_ODM)/etc/permissions/sku_$(DEVICE_NFC_SKU)/android.hardware.strongbox_keystore.xml)
-
+    frameworks/native/data/etc/android.hardware.se.omapi.ese.xml:$(TARGET_COPY_OUT_ODM)/etc/permissions/sku_$(DEVICE_NFC_SKU)/android.hardware.se.omapi.ese.xml) \
+    $(foreach DEVICE_NO_NFC_SKU, $(DEVICE_NO_NFC_SKUS), \
+    $(LOCAL_PATH)/configs/permissions/unavailable-nfc.xml:$(TARGET_COPY_OUT_ODM)/etc/permissions/sku_$(DEVICE_NO_NFC_SKU)/unavailable-nfc.xml)
 
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/nfcee_access.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/nfcee_access.xml
@@ -294,10 +305,14 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     libpowerhalwrap_vendor
 
+# Throttles the stock applist service's FPS thread (see applist-shim/).
 PRODUCT_PACKAGES += \
+    lib_power_aplshim
+
+PRODUCT_PACKAGES += \
+    libperfctl_vendor \
     libmtkperf_client_vendor \
-    libmtkperf_client \
-    android.hardware.power-service-mediatek.scout
+    libmtkperf_client
 
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/powerhint.json:$(TARGET_COPY_OUT_VENDOR)/etc/powerhint.json
@@ -324,7 +339,7 @@ PRODUCT_PACKAGES += \
     hals.conf
 
 # Shipping API level
-PRODUCT_SHIPPING_API_LEVEL := 34
+PRODUCT_SHIPPING_API_LEVEL := 35
 
 # Soong namespaces
 PRODUCT_SOONG_NAMESPACES += \
@@ -347,6 +362,12 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml
 
 # Wifi
+# The stock libwifi-hal (shipped as libwifi-hal-mtk.so) fills the pre-U-QPR2
+# wifi_hal_fn layout: no rtt_range_request_v3/v4, so wifi_rtt_range_cancel sits
+# at index 27 and wifi_set_subsystem_restart_handler at 99. With the default
+# layout the wrapper copies every later member from the wrong slot and the HAL
+# crashes calling wifi_multi_sta_set_primary_connection in configureChip().
+$(call soong_config_set_bool,mediatek_wifi_hal,use_pre_u_qpr2_struct,true)
 PRODUCT_PACKAGES += \
     android.hardware.wifi-service-lazy \
     hostapd \

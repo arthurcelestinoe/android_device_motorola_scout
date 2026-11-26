@@ -1,0 +1,18 @@
+//
+// SPDX-FileCopyrightText: The LineageOS Project
+// SPDX-License-Identifier: Apache-2.0
+//
+
+cc_binary {
+    name: "vendor.motorola.fod_bridge",
+    vendor: true,
+    relative_install_path: "hw",
+    srcs: ["FodBridge.cpp"],
+    shared_libs: [
+        "com.motorola.hardware.biometric.fingerprint-V2-ndk",
+        "libbase",
+        "libbinder_ndk",
+        "liblog",
+    ],
+    init_rc: ["vendor.motorola.fod_bridge.rc"],
+}

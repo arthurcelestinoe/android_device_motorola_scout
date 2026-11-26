@@ -1,0 +1,17 @@
+# vendor.motorola.fod_bridge: reads the goodix_ts FOD keys and forwards finger
+# down/up to the Goodix HAL through IMotoFingerPrint::sendFodEvent.
+type fod_bridge, domain;
+type fod_bridge_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(fod_bridge)
+
+allow fod_bridge input_device:dir r_dir_perms;
+allow fod_bridge input_device:chr_file r_file_perms;
+
+# Display state for the FINGER_DOWN payload (screen on vs AOD).
+r_dir_file(fod_bridge, sysfs_leds)
+
+binder_use(fod_bridge)
+allow fod_bridge hal_fingerprint_test_service:service_manager find;
+binder_call(fod_bridge, hal_fingerprint_default)
+

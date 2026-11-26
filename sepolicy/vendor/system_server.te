@@ -8,3 +8,9 @@ allow system_server zygote_tmpfs:file w_file_perms;
 # Silence harmless vendor property and sysfs reads
 dontaudit system_server vendor_default_prop:file r_file_perms;
 dontaudit system_server sysfs:file r_file_perms;
+
+# FingerprintProvider raises the panel's FOD high-brightness mode through the
+# Motorola panel HAL while an enroll or authenticate client takes the touch, as
+# stock does (stock lists system_server as a hal_moto_panel client).
+allow system_server hal_moto_panel_aidl_service:service_manager find;
+binder_call(system_server, hal_display_panel)

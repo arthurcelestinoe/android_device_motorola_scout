@@ -114,10 +114,12 @@
         <fqname>ISecureElement/SIM1</fqname>
         <fqname>ISecureElement/SIM2</fqname>
     </hal>
-    <hal format="aidl">
-        <name>android.hardware.soundtrigger3</name>
-        <fqname>ISoundTriggerHw/default</fqname>
-    </hal>
+    <!-- android.hardware.soundtrigger3 is served by the stock MediaTek audio
+         service (android.hardware.soundtrigger3-impl.so). This build ships the
+         AOSP audio service, which does not register it, and a declared but
+         unserved soundtrigger3 makes SoundTriggerMiddlewareService block
+         system_server in waitForService until the watchdog kills it. Re-add the
+         declaration together with the MediaTek audio service. -->
     <hal format="aidl">
         <name>vendor.mediatek.hardware.apmonitor</name>
         <fqname>IApmService/default</fqname>

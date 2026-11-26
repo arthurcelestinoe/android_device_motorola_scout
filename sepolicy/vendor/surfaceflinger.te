@@ -6,3 +6,10 @@
 allow surfaceflinger sysfs_leds:dir search;
 allow surfaceflinger hal_graphics_allocator_client_tmpfs:file rw_file_perms;
 get_prop(surfaceflinger, vendor_gpu_prop)
+
+# libudfpshandler (loaded by SurfaceFlinger through the UDFPS extension) forwards
+# finger down/up to the Goodix HAL via IMotoFingerPrint::sendFodEvent, the job
+# Motorola's own system_server does on stock (where system_server may find
+# hal_fingerprint_test_service).
+allow surfaceflinger hal_fingerprint_test_service:service_manager find;
+binder_call(surfaceflinger, hal_fingerprint_default)

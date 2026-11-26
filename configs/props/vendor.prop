@@ -1,3 +1,16 @@
+# Init
+# init.mt6878.rc imports init.cgroup.rc, init.connectivity.rc, init.modem.rc and
+# the sensor rc through these. Without them every such import fails to expand and
+# is skipped (mnld, the ccmni RPS tuning and /data/vendor/sensor are then lost).
+ro.vendor.rc=/vendor/etc/init/hw/
+ro.vendor.init.sensor.rc=init.sensor_2_0.rc
+
+# USB
+# init.mmi.usb.configfs.rc creates and binds the MTP/PTP functions only when this
+# is set (FunctionFS MTP, as on stock). Unset, neither ffs.mtp nor mtp.gs0 exists
+# and "File transfer" exposes just the ADB interface to the PC.
+vendor.usb.use_ffs_mtp=1
+
 # Audio
 aaudio.mmap_exclusive_policy=2
 aaudio.mmap_policy=2
@@ -77,7 +90,7 @@ ro.crypto.volume.filenames_mode=aes-256-cts
 # Display
 debug.graphics.game_default_frame_rate.disabled=true
 graphics.gpu.profiler.support=true
-ro.hardware.egl=meow
+ro.hardware.egl=mali
 ro.hardware.gralloc=common
 ro.hardware.hwcomposer=mtk_common
 ro.hardware.vulkan=mali
@@ -133,14 +146,14 @@ ro.vendor.pq.mtk_dc_support=0
 ro.vendor.pq.mtk_disp_c3d_support=1
 ro.vendor.pq.mtk_disp_ccorr_support=1
 ro.vendor.pq.mtk_disp_color_support=1
-ro.vendor.pq.mtk_disp_game_pq_support=1
+ro.vendor.pq.mtk_disp_game_pq_support=0
 ro.vendor.pq.mtk_disp_gamma_support=1
 ro.vendor.pq.mtk_disp_tdshp_support=1
-ro.vendor.pq.mtk_dre30_support=1
+ro.vendor.pq.mtk_dre30_support=0
 ro.vendor.pq.mtk_dre_cap=0
 ro.vendor.pq.mtk_ds_support=1
 ro.vendor.pq.mtk_hdr10_panel_dtmo_support=0
-ro.vendor.pq.mtk_hdr10_plus_recording_support=1
+ro.vendor.pq.mtk_hdr10_plus_recording_support=0
 ro.vendor.pq.mtk_hfg_support=0
 ro.vendor.pq.mtk_libaibld_name=libaibld.nn6.so
 ro.vendor.pq.mtk_mdp_ccorr_support=0
@@ -152,7 +165,7 @@ ro.vendor.pq.mtk_pq_video_whitelist_support=0
 ro.vendor.pq.mtk_scltm_support=0
 ro.vendor.pq.mtk_silky_brigtness_support=0
 ro.vendor.pq.mtk_ultra_dimming_support=0
-ro.vendor.pq.mtk_ultra_resolution_support=1
+ro.vendor.pq.mtk_ultra_resolution_support=0
 ro.vendor.pq.mtk_video_transition=0
 
 # Display (EGL/Gralloc)
@@ -270,6 +283,8 @@ persist.vendor.log.tel_log_ctrl=1
 persist.vendor.lte.pco_supported=true
 persist.vendor.md_c2k_cap_dep_check=0
 persist.vendor.mims_support=2
+persist.vendor.ims_support=1
+persist.vendor.mtk.volte.enable=1
 persist.vendor.mtk_ct_volte_support=3
 persist.vendor.mtk_dynamic_ims_switch=1
 persist.vendor.mtk_sim_switch_policy=2
@@ -402,11 +417,6 @@ ro.vendor.wlan.standalone.log=y
 
 # Zygote
 zygote.critical_window.minute=10
-
-# ADB Debugging
-ro.adb.secure=0
-ro.debuggable=1
-persist.sys.usb.config=adb
 
 # SKU Props
 import /vendor/etc/motorola/props/sku.${ro.boot.sku_variant}.prop

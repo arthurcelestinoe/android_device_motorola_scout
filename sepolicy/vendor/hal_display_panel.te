@@ -5,3 +5,9 @@ init_daemon_domain(hal_display_panel)
 
 allow hal_display_panel servicemanager:binder { call transfer };
 add_service(hal_display_panel, hal_moto_panel_aidl_service)
+
+# displaypanel.default.so (hw_get_module "displaypanel") drives the panel modes,
+# including the FOD high-brightness mode, through DRM, as on stock.
+allow hal_display_panel dri_device:chr_file rw_file_perms;
+allow hal_display_panel gpu_device:dir search;
+allow hal_display_panel vendor_sysfs_graphics:file rw_file_perms;

@@ -1,0 +1,152 @@
+diff --git a/packages/SystemUI/src/com/android/systemui/doze/DozeSensors.java b/packages/SystemUI/src/com/android/systemui/doze/DozeSensors.java
+index 329a51a92..ba22e1a50 100644
+--- a/packages/SystemUI/src/com/android/systemui/doze/DozeSensors.java
++++ b/packages/SystemUI/src/com/android/systemui/doze/DozeSensors.java
+@@ -27,7 +27,10 @@ import static com.android.systemui.plugins.SensorManagerPlugin.Sensor.TYPE_WAKE_
+ import android.annotation.AnyThread;
+ import android.content.res.Resources;
+ import android.database.ContentObserver;
++import android.graphics.Point;
+ import android.hardware.Sensor;
++import android.hardware.SensorEvent;
++import android.hardware.SensorEventListener;
+ import android.hardware.SensorManager;
+ import android.hardware.TriggerEvent;
+ import android.hardware.TriggerEventListener;
+@@ -545,6 +548,15 @@ public class DozeSensors {
+     }
+ 
+     @VisibleForTesting
++    // Motorola reports every screen-off touch gesture through one sensor, with the
++    // gesture in values[0]: 2 = finger on the fingerprint sensor (zero tap), 3 = finger
++    // lifted, 4 = double tap with its coordinates in values[1..2]. Devices point both
++    // the UDFPS long-press and the double-tap triggers at it, so each trigger keeps
++    // only its own gesture, translated to the layout DozeTriggers expects.
++    private static final String MOTO_GESTURE_SENSOR_TYPE = "com.motorola.sensor.double_tap";
++    private static final int MOTO_GESTURE_FOD_DOWN = 2;
++    private static final int MOTO_GESTURE_DOUBLE_TAP = 4;
++
+     class TriggerSensor extends TriggerEventListener {
+         @NonNull final Sensor[] mSensors; // index = posture, value = sensor
+         boolean mConfigured;
+@@ -800,13 +812,21 @@ public class DozeSensors {
+             if (!mConfigured || sensor == null) return;
+             if (mRequested && !mDisabled && (enabledBySetting() || mIgnoresSetting)) {
+                 if (!mRegistered) {
+-                    mRegistered = mSensorManager.requestTriggerSensor(this, sensor);
++                    mRegistered = isOneShot(sensor)
++                            ? mSensorManager.requestTriggerSensor(this, sensor)
++                            : mSensorManager.registerListener(mNonOneShotListener, sensor,
++                                    SensorManager.SENSOR_DELAY_NORMAL);
+                     mDozeLog.traceSensorRegisterAttempt(sensor.toString(), mRegistered);
+                 } else {
+                     mDozeLog.traceSkipRegisterSensor(sensor.toString());
+                 }
+             } else if (mRegistered) {
+-                final boolean rt = mSensorManager.cancelTriggerSensor(this, sensor);
++                boolean rt = true;
++                if (isOneShot(sensor)) {
++                    rt = mSensorManager.cancelTriggerSensor(this, sensor);
++                } else {
++                    mSensorManager.unregisterListener(mNonOneShotListener, sensor);
++                }
+                 mDozeLog.traceSensorUnregisterAttempt(sensor.toString(), rt);
+                 mRegistered = false;
+             }
+@@ -842,6 +862,33 @@ public class DozeSensors {
+         @Override
+         @AnyThread
+         public void onTrigger(TriggerEvent event) {
++            onSensorValues(event.values);
++        }
++
++        // SensorManager only arms one-shot sensors as trigger sensors. Motorola's
++        // gesture sensor uses the special-trigger mode, so it is listened to as a
++        // regular sensor and released after the first matching event, like a trigger.
++        private final SensorEventListener mNonOneShotListener = new SensorEventListener() {
++            @Override
++            public void onSensorChanged(SensorEvent event) {
++                final Sensor sensor = mSensors[mPosture];
++                if (sensor != null && MOTO_GESTURE_SENSOR_TYPE.equals(sensor.getStringType())
++                        && translateMotoGesture(event.values) == null) {
++                    return; // The other trigger's gesture: stay registered.
++                }
++                mSensorManager.unregisterListener(this, sensor);
++                onSensorValues(event.values);
++            }
++
++            @Override
++            public void onAccuracyChanged(Sensor sensor, int accuracy) {}
++        };
++
++        private boolean isOneShot(Sensor sensor) {
++            return sensor.getReportingMode() == Sensor.REPORTING_MODE_ONE_SHOT;
++        }
++
++        private void onSensorValues(float[] eventValues) {
+             final Sensor sensor = mSensors[mPosture];
+             mDozeLog.traceSensor(mPulseReason);
+             mHandler.post(mWakeLock.wrap(() -> {
+@@ -850,20 +897,58 @@ public class DozeSensors {
+                 }
+ 
+                 mRegistered = false;
++                float[] values = eventValues;
++                if (sensor != null && MOTO_GESTURE_SENSOR_TYPE.equals(sensor.getStringType())) {
++                    values = translateMotoGesture(values);
++                    if (values == null) {
++                        // A gesture meant for the other trigger sharing this one-shot
++                        // sensor: re-arm and wait for ours.
++                        updateListening();
++                        return;
++                    }
++                }
+                 float screenX = -1;
+                 float screenY = -1;
+-                if (mReportsTouchCoordinates && event.values.length >= 2) {
+-                    screenX = event.values[0];
+-                    screenY = event.values[1];
++                if (mReportsTouchCoordinates && values.length >= 2) {
++                    screenX = values[0];
++                    screenY = values[1];
+                 }
+                 mSensorCallback.onSensorPulse(mPulseReason, mPerformsProxCheck,
+-                        screenX, screenY, event.values);
++                        screenX, screenY, values);
+                 if (!mRegistered && mImmediatelyReRegister) {
+                     updateListening();
+                 }
+             }));
+         }
+ 
++        /**
++         * Keeps only the Motorola gesture this trigger handles and lays its values out as
++         * DozeTriggers reads them, or returns null to ignore the event.
++         */
++        private float[] translateMotoGesture(float[] values) {
++            final int gesture = values.length > 0 ? (int) values[0] : -1;
++            if (mPulseReason == REASON_SENSOR_UDFPS_LONG_PRESS) {
++                if (gesture != MOTO_GESTURE_FOD_DOWN) {
++                    return null;
++                }
++                // The touch IC reports no position for a finger on the sensor, so use
++                // the sensor's own center; DozeTriggers reads x, y, -, major, minor.
++                final Point center = mAuthController.getUdfpsLocation();
++                if (center == null) {
++                    return null;
++                }
++                final float size = 2f * mAuthController.getUdfpsRadius();
++                return new float[] {center.x, center.y, 0f, size, size};
++            }
++            if (mPulseReason == DozeLog.REASON_SENSOR_DOUBLE_TAP) {
++                if (gesture != MOTO_GESTURE_DOUBLE_TAP || values.length < 3) {
++                    return null;
++                }
++                return new float[] {values[1], values[2]};
++            }
++            return values;
++        }
++
+         /**
+          * If the sensor itself performs proximity checks, to avoid pocket dialing.
+          * Gated sensors don't need to be stopped when the {@link DozeMachine} is

@@ -1,0 +1,107 @@
+diff --git a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java
+index 51ca147fc..b9cd2a444 100644
+--- a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java
++++ b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java
+@@ -49,8 +49,10 @@ import android.os.Binder;
+ import android.os.Build;
+ import android.os.Handler;
+ import android.os.IBinder;
++import android.os.Parcel;
+ import android.os.RemoteException;
+ import android.os.ServiceManager;
++import android.os.SystemProperties;
+ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.util.Slog;
+@@ -772,10 +774,56 @@ public class FingerprintProvider implements IBinder.DeathRecipient, ServiceProvi
+                         Slog.e(getTag(), "onPointerDown received during client: " + client);
+                         return;
+                     }
++                    // Light the optical sensor before the HAL starts capturing.
++                    setPanelFodHbm(true);
+                     ((Udfps) client).onPointerDown(pc);
+                 });
+     }
+ 
++    // Some Motorola optical UDFPS devices need the panel in its FOD high-brightness
++    // mode while the sensor captures, and their HAL leaves that to the system, as
++    // stock does through the panel HAL. Only done while an enroll or authenticate
++    // client is taking the touch, so other touches on the sensor area stay normal.
++    private static final String MOTO_PANEL_DESCRIPTOR =
++            "com.motorola.hardware.display.panel.IDisplayPanel";
++    // IDisplayPanel.setMode(PanelMode mode, out int) is the interface's fifth method.
++    private static final int MOTO_PANEL_SET_MODE = IBinder.FIRST_CALL_TRANSACTION + 4;
++    private static final int MOTO_PANEL_MODE_NORMAL = 0;
++    private static final int MOTO_PANEL_MODE_FOD_HBM = 4;
++    // Never leave the panel in high brightness if the matching pointer up is lost.
++    private static final long MOTO_PANEL_HBM_TIMEOUT_MS = 3000;
++    private final boolean mMotoPanelFodHbm =
++            SystemProperties.getBoolean("persist.sys.ax_fp_moto_panel_hbm", false);
++    private final Runnable mPanelFodHbmTimeout = () -> setPanelFodHbm(false);
++
++    private void setPanelFodHbm(boolean on) {
++        if (!mMotoPanelFodHbm) {
++            return;
++        }
++        mHandler.removeCallbacks(mPanelFodHbmTimeout);
++        if (on) {
++            mHandler.postDelayed(mPanelFodHbmTimeout, MOTO_PANEL_HBM_TIMEOUT_MS);
++        }
++        final IBinder panel = ServiceManager.checkService(MOTO_PANEL_DESCRIPTOR + "/default");
++        if (panel == null) {
++            Slog.w(getTag(), "Motorola panel HAL not available");
++            return;
++        }
++        final Parcel data = Parcel.obtain();
++        final Parcel reply = Parcel.obtain();
++        try {
++            data.writeInterfaceToken(MOTO_PANEL_DESCRIPTOR);
++            data.writeInt(on ? MOTO_PANEL_MODE_FOD_HBM : MOTO_PANEL_MODE_NORMAL);
++            panel.transact(MOTO_PANEL_SET_MODE, data, reply, 0);
++            reply.readException();
++        } catch (RemoteException | RuntimeException e) {
++            Slog.w(getTag(), "Failed to set the panel FOD mode to " + on, e);
++        } finally {
++            reply.recycle();
++            data.recycle();
++        }
++    }
++
+     @Override
+     public void onPointerUp(long requestId, int sensorId, PointerContext pc) {
+         if (mFingerprintSensors.get(sensorId).getSensorProperties().halHandlesDisplayTouches) {
+@@ -789,6 +837,9 @@ public class FingerprintProvider implements IBinder.DeathRecipient, ServiceProvi
+                     }
+                     ((Udfps) client).onPointerUp(pc);
+                 });
++        // A successful authentication finishes its client before the finger lifts, so
++        // the pointer up above finds no client: release the panel unconditionally.
++        setPanelFodHbm(false);
+     }
+ 
+     @Override
+diff --git a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/Sensor.java b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/Sensor.java
+index 2a3a8ce30..bcb4d6d5b 100644
+--- a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/Sensor.java
++++ b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/Sensor.java
+@@ -38,6 +38,7 @@ import android.os.Handler;
+ import android.os.IBinder;
+ import android.os.RemoteException;
+ import android.os.ServiceManager;
++import android.os.SystemProperties;
+ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.util.Slog;
+@@ -225,7 +226,11 @@ public class Sensor {
+                 componentInfo,
+                 prop.sensorType,
+                 prop.halControlsIllumination,
+-                prop.halHandlesDisplayTouches,
++                // Some HALs built for Android 15 report halHandlesDisplayTouches yet
++                // still start the capture from onPointerDown, which the framework
++                // stopped sending to such HALs. Devices with one opt out here.
++                prop.halHandlesDisplayTouches && !SystemProperties.getBoolean(
++                        "persist.sys.ax_fp_force_pointer_events", false),
+                 resetLockoutRequiresHardwareAuthToken,
+                 !workaroundLocations.isEmpty() ? workaroundLocations :
+                         Arrays.stream(prop.sensorLocations).map(location ->

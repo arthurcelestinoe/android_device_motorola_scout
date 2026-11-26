@@ -9,6 +9,12 @@ allow motcamera_app tmpfs:file rw_file_perms;
 
 get_prop(motcamera_app, audio_config_prop)
 get_prop(motcamera_app, exported_system_prop)
+get_prop(motcamera_app, system_mot_prop)
+
+# Like any app, Moto Camera uses the public framework services (it was denied
+# uimode right before crashing on a zero preview size). app_api_service is the
+# attribute that covers exactly the services ordinary apps may look up.
+allow motcamera_app app_api_service:service_manager find;
 
 allow motcamera_app {
     activity_service

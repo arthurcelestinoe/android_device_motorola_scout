@@ -1,5 +1,6 @@
 get_prop(mtk_hal_power, boot_status_prop)
 add_service(mtk_hal_power, mtk_hal_power_service)
+hal_client_domain(mtk_hal_power, mtk_hal_netdagent)
 
 # Proc and Property
 allow mtk_hal_power proc:file { getattr ioctl open read };

@@ -1,0 +1,10 @@
+# vendor.mediatek.hardware.nvram-service runs in the stock mtk_hal_nvramagent
+# domain. These are the rules the stock vendor policy grants that domain and the
+# MediaTek policy in this tree does not (compared against the stock
+# vendor_sepolicy.cil). Without them the agent loops on sysfs_ccci denials and
+# cannot reach /mnt/vendor/nvcfg.
+allow mtk_hal_nvramagent sysfs_ccci:dir search;
+allow mtk_hal_nvramagent sysfs_ccci:file r_file_perms;
+allow mtk_hal_nvramagent nvcfg_file:dir create_dir_perms;
+allow mtk_hal_nvramagent nvcfg_file:file create_file_perms;
+allow mtk_hal_nvramagent gsm0710muxd_device:chr_file rw_file_perms;

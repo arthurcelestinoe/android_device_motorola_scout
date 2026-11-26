@@ -9,7 +9,7 @@ DEVICE_PATH := device/motorola/scout
 # A/B
 AB_OTA_UPDATER := true
 AB_OTA_PARTITIONS := \
-    boot \
+    dtbo \
     init_boot \
     system \
     system_dlkm \
@@ -48,6 +48,7 @@ ZYGOTE_FORCE_64 := true
 
 # Bootloader
 TARGET_BOOTLOADER_BOARD_NAME := scout
+BOARD_SHIPPING_API_LEVEL := 34
 TARGET_NO_BOOTLOADER := true
 
 # Display
@@ -90,7 +91,6 @@ BOARD_USES_GENERIC_KERNEL_IMAGE := true
 BOARD_KERNEL_IMAGE_NAME := Image.gz
 
 BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2
-BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
 BOARD_KERNEL_CMDLINE += androidboot.usbcontroller=11201000.usb0
 
 TARGET_FORCE_PREBUILT_KERNEL := true
@@ -107,17 +107,6 @@ BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := $(strip $(shell cat $(DEVICE_PATH)-k
 BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD := $(strip $(shell cat $(DEVICE_PATH)-kernel/modules.load.recovery))
 BOOT_KERNEL_MODULES := $(BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD)
 
-# Recovery touch modules (from vendor_dlkm)
-RECOVERY_KERNEL_MODULES := \
-    mmi_info \
-    mmi_relay \
-    sensors_class \
-    touchscreen_u_mmi \
-    focaltech_touch_v3_u_mmi
-
-BOARD_VENDOR_RAMDISK_KERNEL_MODULES += $(addprefix $(DEVICE_PATH)-kernel/vendor/,$(addsuffix .ko,$(RECOVERY_KERNEL_MODULES)))
-BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD += $(RECOVERY_KERNEL_MODULES)
-
 BOARD_MKBOOTIMG_ARGS += \
     --dtb_offset $(BOARD_TAGS_OFFSET) \
     --header_version $(BOARD_BOOT_HEADER_VERSION) \
@@ -133,6 +122,8 @@ TARGET_NO_KERNEL_OVERRIDE := true
 # generated_kernel_includes against kernel/motorola/scout, which does not exist
 # (the kernel is reconstructed from stock firmware).
 TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)-kernel/Image.gz
+# Keep the OEM-signed GKI image on-device and use it to generate the AVB descriptor.
+BOARD_PREBUILT_BOOTIMAGE := $(DEVICE_PATH)-kernel/boot.img
 # UAPI tarball built from bionic/libc/kernel/uapi (GKI 6.1 layout). Stops
 # vendor/lineage/build/soong from calling `make headers_install` in a missing
 # kernel tree, and gives cc.go prebuilt_kernel_headers instead.
@@ -144,12 +135,14 @@ BOARD_PRODUCTIMAGE_MINIMAL_PARTITION_RESERVED_SIZE := false
 BOARD_FLASH_BLOCK_SIZE := 262144 # (BOARD_KERNEL_PAGESIZE * 64)
 BOARD_EROFS_PCLUSTER_SIZE := 65536
 BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_DTBOIMG_PARTITION_SIZE := 8388608
+BOARD_PREBUILT_DTBOIMAGE := $(DEVICE_PATH)-kernel/dtbo.img
 BOARD_INIT_BOOT_IMAGE_PARTITION_SIZE := 8388608
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 67108864
-BOARD_SUPER_PARTITION_SIZE := 16508780544
-BOARD_SUPER_PARTITION_GROUPS := motorola_dynamic_partitions
-BOARD_MOTOROLA_DYNAMIC_PARTITIONS_PARTITION_LIST := system system_dlkm system_ext vendor vendor_dlkm product
-BOARD_MOTOROLA_DYNAMIC_PARTITIONS_SIZE := 16506683392
+BOARD_SUPER_PARTITION_SIZE := 14495514624
+BOARD_SUPER_PARTITION_GROUPS := main
+BOARD_MAIN_PARTITION_LIST := system system_dlkm system_ext vendor vendor_dlkm product
+BOARD_MAIN_SIZE := 14493417472
 
 BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_SYSTEM_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
@@ -178,7 +171,7 @@ TARGET_ODM_PROP += $(DEVICE_PATH)/configs/props/odm.prop
 ENABLE_VENDOR_RIL_SERVICE := true
 
 # Security patch level
-BOOT_SECURITY_PATCH := 2025-08-01
+BOOT_SECURITY_PATCH := 2026-10-01
 VENDOR_SECURITY_PATCH := $(BOOT_SECURITY_PATCH)
 
 # Sepolicy
@@ -196,19 +189,34 @@ $(call soong_config_set,surfaceflinger,udfps_lib,//device/motorola/scout/udfps:l
 # Verified Boot
 BOARD_AVB_ENABLE := true
 BOARD_AVB_ALGORITHM := SHA256_RSA2048
-BOARD_AVB_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
-BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --set_hashtree_disabled_flag
-BOARD_AVB_ROLLBACK_INDEX := 18
+BOARD_AVB_KEY_PATH := vendor/lineage-priv/keys/vbmeta.pem
+# Match the rollback floor declared by the A171VCH.41-15 stock firmware.
+BOARD_AVB_ROLLBACK_INDEX := 21
+# Preserve the vendor descriptors paired with the unmodified A171VCH.41-15 kernel.
+BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += \
+    --prop HAB_META:scout_50 \
+    --prop KERN_PROT_META:rodata_bounds:65536,17039360,29229056
+BOARD_AVB_DTBO_ADD_HASH_FOOTER_ARGS += --hash_algorithm sha256
 
-BOARD_AVB_VBMETA_SYSTEM := system product system_ext
+BOARD_AVB_VBMETA_SYSTEM := system system_ext
 BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := $(BOARD_AVB_ALGORITHM)
-BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := $(BOARD_AVB_KEY_PATH)
-BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := 18
+BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := vendor/lineage-priv/keys/vbmeta_system.pem
+BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := $(BOARD_AVB_ROLLBACK_INDEX)
 BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX_LOCATION := 2
 
 # Wifi
 WPA_SUPPLICANT_VERSION := VER_0_8_X
 BOARD_HOSTAPD_DRIVER := NL80211
+BOARD_WPA_SUPPLICANT_DRIVER := NL80211
+# The MediaTek gen4m driver does not advertise NL80211_ATTR_MAX_NUM_AKM_SUITES, so
+# upstream wpa_supplicant assumes it takes several AKMs per connect. The driver then
+# parses the list as empty ("Support akm bmap=0x0", "rsn policy select fail") and
+# never authenticates. Offer one AKM per connect, as the stock MTK supplicant does.
+$(call soong_config_set_bool,wpa_supplicant_8,wifi_disable_multi_akm,true)
+# gen4m also only knows NL80211_WPA_VERSION_1/2: an SAE connect sent as
+# WPA_VERSION_3 is parsed as WPA1 with AKM=0, so every WPA3 AP is rejected.
+# Needs external/wpa_supplicant_8 patched (patches/wpa_supplicant_8-no-wpa-version-3.patch).
+$(call soong_config_set_bool,wpa_supplicant_8,wifi_no_wpa_version_3,true)
 WIFI_DRIVER_FW_PATH_PARAM := "/dev/wmtWifi"
 WIFI_DRIVER_FW_PATH_STA := "STA"
 WIFI_DRIVER_FW_PATH_AP := "AP"
