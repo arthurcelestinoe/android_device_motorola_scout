@@ -55,9 +55,9 @@ Known limitations:
    git -C frameworks/base apply device/motorola/scout/patches/frameworks_base-fp-force-pointer-events.patch
    git -C frameworks/base apply device/motorola/scout/patches/frameworks_base-doze-moto-gestures.patch
    ```
-3. Get the proprietary blobs, either from the `vendor/motorola/scout`
-   repository in the local manifest or by running `./extract-files.py` against
-   the `A171VCH.41-15` firmware.
+3. Extract the proprietary blobs into `vendor/motorola/scout` by running
+   `./extract-files.py` against the `A171VCH.41-15` firmware (a dump of its
+   partitions or a running device on that firmware).
 4. Build:
 
    ```

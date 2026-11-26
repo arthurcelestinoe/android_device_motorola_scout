@@ -4,12 +4,12 @@
   Copy to .repo/local_manifests/ and run repo sync.
 -->
 <manifest>
-  <remote name="scout" fetch="https://github.com/GITHUB_USER" />
+  <remote name="scout" fetch="https://github.com/arthurcelestinoe" />
 
-  <!-- Device, prebuilt stock kernel and proprietary blobs -->
+  <!-- Device and prebuilt stock kernel. Extract the proprietary blobs with
+       device/motorola/scout/extract-files.py. -->
   <project path="device/motorola/scout" name="android_device_motorola_scout" remote="scout" revision="main" />
   <project path="device/motorola/scout-kernel" name="android_device_motorola_scout-kernel" remote="scout" revision="main" />
-  <project path="vendor/motorola/scout" name="android_vendor_motorola_scout" remote="scout" revision="main" />
 
   <!-- Motorola and MediaTek HALs and sepolicy -->
   <project path="hardware/mediatek" name="LineageOS/android_hardware_mediatek" />
