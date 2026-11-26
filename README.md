@@ -76,6 +76,11 @@ firmware on the slot that will boot it, and it keeps the stock `boot`
 partition (GKI kernel). Do not relock the bootloader while running a custom
 build.
 
+The stock firmware is available from Motorola's Software Fix (Rescue and
+Smart Assistant) tool, or from the unofficial mirror
+[stockrom.net](https://www.stockrom.net/2026/11/xt2505-3-retbr-os17-a171vch-41-15.html)
+(`XT2505-3` RETBR `A171VCH.41-15`).
+
 The images go to one slot: the logical partitions (`system`, `system_ext`,
 `system_dlkm`, `product`, `vendor`, `vendor_dlkm`) from fastbootd, then
 `init_boot`, `dtbo`, `vendor_boot`, `vbmeta` and `vbmeta_system` from the
