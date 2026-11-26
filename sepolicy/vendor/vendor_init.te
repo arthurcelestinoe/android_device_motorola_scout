@@ -37,3 +37,7 @@ set_prop(vendor_init, vendor_mot_camera_prop)
 dontaudit vendor_init default_prop:file r_file_perms;
 dontaudit vendor_init default_prop:property_service set;
 dontaudit vendor_init vts_status_prop:file r_file_perms;
+
+# init.mmi.overlay.rc waits for /dev/nq-nci before fixing its owner and mode;
+# without getattr the wait never sees the node and times out after 5 s.
+allow vendor_init nfc_device:chr_file { getattr setattr };
