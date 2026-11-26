@@ -35,7 +35,7 @@ get_prop(mtk_hal_camera, vendor_gpu_prop)
 # Silence default_prop read noise
 dontaudit mtk_hal_camera default_prop:file r_file_perms;
 
-# cybert logcat additions
+# Denials seen in logcat
 allow mtk_hal_camera system_data_file:dir search;
 
 # Allow camera HAL to register its vendor services

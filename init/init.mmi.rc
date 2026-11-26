@@ -329,10 +329,6 @@ on property:sys.usb.accessory_current_limit=1
 on property:sys.usb.accessory_current_limit=0
    write /sys/devices/platform/charger/force_pmic_icl 0
 
-# Set dsda for cybert PRC sku
-on init && property:ro.vendor.hw.dualsim=true && property:ro.product.vendor.model=cybert && property:ro.vendor.hw.radio=PRC
-   setprop persist.radio.multisim.config dsda
-
 # from P onwards aplogd cannot read vold.post_fs_data_done so a new property
 # shall be used to allow aplogd checking if FBE has finished /data decryption
 on property:vold.post_fs_data_done=*
