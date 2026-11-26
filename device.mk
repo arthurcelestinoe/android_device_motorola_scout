@@ -384,4 +384,6 @@ PRODUCT_COPY_FILES += \
 
 # Inherit the proprietary files
 $(call inherit-product, vendor/motorola/scout/scout-vendor.mk)
-$(call inherit-product, vendor/motorola/scout-motcamera/scout-motcamera-vendor.mk)
+
+# Optional Moto Camera package (device/motorola/scout-motcamera).
+$(call inherit-product-if-exists, device/motorola/scout-motcamera/motcamera.mk)

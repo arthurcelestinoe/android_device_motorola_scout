@@ -1,3 +1,0 @@
-# Moto Camera reads Motorola vendor properties (vendor_mot_prop) for its device
-# configuration; it was denied that read while failing to set up the preview.
-get_prop(motcamera_app, vendor_mot_prop)
